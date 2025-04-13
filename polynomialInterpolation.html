@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polynomial Interpolation Methods</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h2 {
+            color: #3498db;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .input-section {
+            flex: 1;
+            min-width: 300px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .results-section {
+            flex: 1;
+            min-width: 300px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .visualization-section {
+            flex: 2;
+            min-width: 300px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        input, button {
+            padding: 8px 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+        }
+        
+        .result-card {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .data-point-container {
+            margin-bottom: 15px;
+        }
+        
+        .data-point {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .remove-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .remove-btn:hover {
+            background-color: #c0392b;
+        }
+        
+        .add-point-btn {
+            background-color: #2ecc71;
+            margin-bottom: 20px;
+        }
+        
+        .add-point-btn:hover {
+            background-color: #27ae60;
+        }
+        
+        .error {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .method-name {
+            font-weight: bold;
+        }
+        
+        .method-value {
+            font-family: monospace;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Polynomial Interpolation Methods</h1>
+    
+    <div class="container">
+        <div class="input-section">
+            <h2>Input Data</h2>
+            
+            <div id="dataPointsContainer" class="data-point-container">
+                <!-- Data points will be added here -->
+                <div class="data-point">
+                    <input type="number" placeholder="x" step="any">
+                    <input type="number" placeholder="y" step="any">
+                    <button class="remove-btn">×</button>
+                </div>
+            </div>
+            
+            <button id="addPointBtn" class="add-point-btn">Add Data Point</button>
+            
+            <label for="testValue">Test Value (xₜ):</label>
+            <input type="number" id="testValue" step="any">
+            
+            <button id="calculateBtn">Calculate Interpolation</button>
+            
+            <div id="loadExampleContainer">
+                <h3>Load Example Data</h3>
+                <button id="loadExampleBtn">Load y = x³ Example</button>
+            </div>
+        </div>
+        
+        <div class="results-section">
+            <h2>Interpolation Results</h2>
+            <div id="resultsContainer">
+                
+                <p>Enter data points and a test value, then click "Calculate Interpolation".</p>
+            </div>
+        </div>
+        
+        <div class="visualization-section">
+            <h2>Visualization</h2>
+            <canvas id="interpolationChart"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script>
+        
+        function directMethod(x, y, xt) {
+            const n = x.length;
+            
+            const vandermonde = Array(n).fill().map(() => Array(n).fill(0));
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    vandermonde[i][j] = Math.pow(x[i], n - j - 1);
+                }
+            }
+            
+            const augmentedMatrix = vandermonde.map((row, i) => [...row, y[i]]);
+            const coefficients = solveLinearSystem(augmentedMatrix);
+            
+            let result = 0;
+            for (let i = 0; i < n; i++) {
+                result += coefficients[i] * Math.pow(xt, n - i - 1);
+            }
+            
+            return result;
+        }
+
+        function solveLinearSystem(matrix) {
+            const n = matrix.length;
+
+            matrix = matrix.map(row => [...row]);
+            
+            for (let i = 0; i < n; i++) {
+    
+                let maxRow = i;
+                for (let j = i + 1; j < n; j++) {
+                    if (Math.abs(matrix[j][i]) > Math.abs(matrix[maxRow][i])) {
+                        maxRow = j;
+                    }
+                }
+                
+                [matrix[i], matrix[maxRow]] = [matrix[maxRow], matrix[i]];
+                
+             
+                for (let j = i + 1; j < n; j++) {
+                    const factor = matrix[j][i] / matrix[i][i];
+                    for (let k = i; k <= n; k++) {
+                        matrix[j][k] -= factor * matrix[i][k];
+                    }
+                }
+            }
+            
+           
+            const solution = Array(n).fill(0);
+            for (let i = n - 1; i >= 0; i--) {
+                let sum = 0;
+                for (let j = i + 1; j < n; j++) {
+                    sum += matrix[i][j] * solution[j];
+                }
+                solution[i] = (matrix[i][n] - sum) / matrix[i][i];
+            }
+            
+            return solution;
+        }
+
+       
+        function newtonDividedDifference(x, y, xt) {
+            const n = x.length;
+            
+         
+            const dividedDiff = Array(n).fill().map(() => Array(n).fill(0));
+            
+           
+            for (let i = 0; i < n; i++) {
+                dividedDiff[i][0] = y[i];
+            }
+            
+            
+            for (let j = 1; j < n; j++) {
+                for (let i = 0; i < n - j; i++) {
+                    dividedDiff[i][j] = (dividedDiff[i + 1][j - 1] - dividedDiff[i][j - 1]) / (x[i + j] - x[i]);
+                }
+            }
+            
+            
+            let result = dividedDiff[0][0];
+            let term = 1;
+            
+            for (let i = 1; i < n; i++) {
+                term *= (xt - x[i - 1]);
+                result += dividedDiff[0][i] * term;
+            }
+            
+            return result;
+        }
+
+        
+        function lagrangeInterpolation(x, y, xt) {
+            const n = x.length;
+            let result = 0;
+            
+            for (let i = 0; i < n; i++) {
+                let term = y[i];
+                for (let j = 0; j < n; j++) {
+                    if (j !== i) {
+                        term *= (xt - x[j]) / (x[i] - x[j]);
+                    }
+                }
+                result += term;
+            }
+            
+            return result;
+        }
+
+       
+        function cubicSplineInterpolation(x, y, xt) {
+            const n = x.length;
+            
+           
+            const h = [];
+            for (let i = 0; i < n - 1; i++) {
+                h.push(x[i + 1] - x[i]);
+            }
+            
+
+            const alpha = Array(n - 2).fill(0);
+            for (let i = 0; i < n - 2; i++) {
+                alpha[i] = 3 * ((y[i + 2] - y[i + 1]) / h[i + 1] - (y[i + 1] - y[i]) / h[i]);
+            }
+            
+            const a = Array(n - 2).fill(0);
+            const b = Array(n - 2).fill(0);
+            const c = Array(n - 2).fill(0);
+            
+            for (let i = 0; i < n - 2; i++) {
+                a[i] = i > 0 ? h[i] : 0;
+                b[i] = 2 * (h[i] + h[i + 1]);
+                c[i] = i < n - 3 ? h[i + 1] : 0;
+            }
+            
+            
+            const m = solveTridiagonalSystem(a, b, c, alpha);
+            
+        
+            const secondDerivatives = [0, ...m, 0];
+            
+            let interval = 0;
+            for (let i = 0; i < n - 1; i++) {
+                if (x[i] <= xt && xt <= x[i + 1]) {
+                    interval = i;
+                    break;
+                }
+            }
+            
+            const t = (xt - x[interval]) / h[interval];
+            const a0 = y[interval];
+            const a1 = (y[interval + 1] - y[interval]) / h[interval] - h[interval] * (2 * secondDerivatives[interval] + secondDerivatives[interval + 1]) / 6;
+            const a2 = secondDerivatives[interval] / 2;
+            const a3 = (secondDerivatives[interval + 1] - secondDerivatives[interval]) / (6 * h[interval]);
+            
+            const result = a0 + a1 * (xt - x[interval]) + a2 * Math.pow(xt - x[interval], 2) + a3 * Math.pow(xt - x[interval], 3);
+            
+            return result;
+        }
+
+        function solveTridiagonalSystem(a, b, c, d) {
+            const n = d.length;
+            const result = Array(n).fill(0);
+            
+            const cPrime = Array(n).fill(0);
+            const dPrime = Array(n).fill(0);
+            
+            cPrime[0] = c[0] / b[0];
+            dPrime[0] = d[0] / b[0];
+            
+            for (let i = 1; i < n; i++) {
+                const denominator = b[i] - a[i] * cPrime[i - 1];
+                cPrime[i] = i < n - 1 ? c[i] / denominator : 0;
+                dPrime[i] = (d[i] - a[i] * dPrime[i - 1]) / denominator;
+            }
+            
+            result[n - 1] = dPrime[n - 1];
+            for (let i = n - 2; i >= 0; i--) {
+                result[i] = dPrime[i] - cPrime[i] * result[i + 1];
+            }
+            
+            return result;
+        }
+
+        function compareInterpolationMethods(x, y, xt) {
+            try {
+               
+                const directResult = directMethod(x, y, xt);
+                const newtonResult = newtonDividedDifference(x, y, xt);
+                const lagrangeResult = lagrangeInterpolation(x, y, xt);
+                const splineResult = cubicSplineInterpolation(x, y, xt);
+                
+               
+                return {
+                    directMethod: directResult,
+                    newtonDividedDifference: newtonResult,
+                    lagrangeInterpolation: lagrangeResult,
+                    splineInterpolation: splineResult
+                };
+            } catch (error) {
+                console.error("Error in interpolation:", error);
+                return {
+                    error: error.message
+                };
+            }
+        }
+
+        
+        function generateCurvePoints(x, y, method) {
+            const minX = Math.min(...x) - 0.5;
+            const maxX = Math.max(...x) + 0.5;
+            const points = [];
+            const steps = 100;
+            
+            for (let i = 0; i <= steps; i++) {
+                const xVal = minX + (maxX - minX) * (i / steps);
+                try {
+                    const yVal = method(x, y, xVal);
+                    points.push({ x: xVal, y: yVal });
+                } catch (e) {
+
+                }
+            }
+            
+            return points;
+        }
+
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const dataPointsContainer = document.getElementById('dataPointsContainer');
+            const addPointBtn = document.getElementById('addPointBtn');
+            const calculateBtn = document.getElementById('calculateBtn');
+            const testValueInput = document.getElementById('testValue');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const loadExampleBtn = document.getElementById('loadExampleBtn');
+            
+            let chart = null;
+            
+          
+            function addDataPoint(x = '', y = '') {
+                const pointDiv = document.createElement('div');
+                pointDiv.className = 'data-point';
+                
+                const xInput = document.createElement('input');
+                xInput.type = 'number';
+                xInput.placeholder = 'x';
+                xInput.step = 'any';
+                xInput.value = x;
+                
+                const yInput = document.createElement('input');
+                yInput.type = 'number';
+                yInput.placeholder = 'y';
+                yInput.step = 'any';
+                yInput.value = y;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-btn';
+                removeBtn.textContent = '×';
+                removeBtn.addEventListener('click', function() {
+                    if (dataPointsContainer.children.length > 1) {
+                        pointDiv.remove();
+                    }
+                });
+                
+                pointDiv.appendChild(xInput);
+                pointDiv.appendChild(yInput);
+                pointDiv.appendChild(removeBtn);
+                
+                dataPointsContainer.appendChild(pointDiv);
+            }
+            
+            
+            if (dataPointsContainer.children.length === 0) {
+                addDataPoint();
+            }
+            
+           
+            addPointBtn.addEventListener('click', function() {
+                addDataPoint();
+            });
+            
+         
+            loadExampleBtn.addEventListener('click', function() {
+            
+                dataPointsContainer.innerHTML = '';
+                
+               
+                const exampleX = [1, 2, 3, 4, 5];
+                const exampleY = [2, 8, 27, 64, 125];
+                
+                for (let i = 0; i < exampleX.length; i++) {
+                    addDataPoint(exampleX[i], exampleY[i]);
+                }
+                
+            
+                testValueInput.value = '2.5';
+            });
+            
+          
+            calculateBtn.addEventListener('click', function() {
+        
+                const x = [];
+                const y = [];
+                let hasError = false;
+                let errorMsg = '';
+                
+        
+                const dataPoints = dataPointsContainer.querySelectorAll('.data-point');
+                dataPoints.forEach((point, index) => {
+                    const inputs = point.querySelectorAll('input');
+                    const xVal = parseFloat(inputs[0].value);
+                    const yVal = parseFloat(inputs[1].value);
+                    
+                    if (isNaN(xVal) || isNaN(yVal)) {
+                        hasError = true;
+                        errorMsg = 'All data points must have valid x and y values.';
+                        return;
+                    }
+                    
+                
+                    if (x.includes(xVal)) {
+                        hasError = true;
+                        errorMsg = 'All x values must be unique.';
+                        return;
+                    }
+                    
+                    x.push(xVal);
+                    y.push(yVal);
+                });
+                
+                
+                const xt = parseFloat(testValueInput.value);
+                if (isNaN(xt)) {
+                    hasError = true;
+                    errorMsg = 'Please enter a valid test value.';
+                }
+                
+                if (x.length < 3) {
+                    hasError = true;
+                    errorMsg = 'At least 3 data points are required for interpolation.';
+                }
+                
+                
+                if (hasError) {
+                    resultsContainer.innerHTML = `<div class="error">${errorMsg}</div>`;
+                    return;
+                }
+                
+                
+                const results = compareInterpolationMethods(x, y, xt);
+                
+                if (results.error) {
+                    resultsContainer.innerHTML = `<div class="error">Error: ${results.error}</div>`;
+                    return;
+                }
+                
+               
+                resultsContainer.innerHTML = `
+                    <div class="result-card">
+                        <h3>Interpolated value at xt = ${xt}</h3>
+                        <p><span class="method-name">Direct Method:</span> <span class="method-value">${results.directMethod.toFixed(4)}</span></p>
+                        <p><span class="method-name">Newton's Divided Difference:</span> <span class="method-value">${results.newtonDividedDifference.toFixed(4)}</span></p>
+                        <p><span class="method-name">Lagrange Interpolation:</span> <span class="method-value">${results.lagrangeInterpolation.toFixed(4)}</span></p>
+                        <p><span class="method-name">Cubic Spline Interpolation:</span> <span class="method-value">${results.splineInterpolation.toFixed(4)}</span></p>
+                    </div>
+                `;
+                
+               
+                updateChart(x, y, xt, results);
+            });
+            
+            
+            function updateChart(x, y, xt, results) {
+                const ctx = document.getElementById('interpolationChart').getContext('2d');
+                
+             
+                if (chart) {
+                    chart.destroy();
+                }
+                
+                
+                const indices = x.map((_, i) => i).sort((a, b) => x[a] - x[b]);
+                const sortedX = indices.map(i => x[i]);
+                const sortedY = indices.map(i => y[i]);
+                
+               
+                const directPoints = generateCurvePoints(sortedX, sortedY, directMethod);
+                const newtonPoints = generateCurvePoints(sortedX, sortedY, newtonDividedDifference);
+                const lagrangePoints = generateCurvePoints(sortedX, sortedY, lagrangeInterpolation);
+                const splinePoints = generateCurvePoints(sortedX, sortedY, cubicSplineInterpolation);
+                
+               
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [
+                            {
+                                label: 'Data Points',
+                                data: x.map((val, i) => ({ x: val, y: y[i] })),
+                                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                                borderColor: 'rgba(0, 0, 0, 0.7)',
+                                pointRadius: 6,
+                                showLine: false
+                            },
+                            {
+                                label: 'Test Point (Direct)',
+                                data: [{ x: xt, y: results.directMethod }],
+                                backgroundColor: 'rgba(255, 99, 132, 0.9)',
+                                borderColor: 'rgba(255, 99, 132, 0.9)',
+                                pointRadius: 6,
+                                showLine: false
+                            },
+                            {
+                                label: 'Direct Method',
+                                data: directPoints,
+                                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                                borderColor: 'rgba(255, 99, 132, 1)',
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                tension: 0.3
+                            },
+                            {
+                                label: 'Newton\'s Divided Difference',
+                                data: newtonPoints,
+                                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                tension: 0.3
+                            },
+                            {
+                                label: 'Lagrange Interpolation',
+                                data: lagrangePoints,
+                                backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                                borderColor: 'rgba(255, 206, 86, 1)',
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                tension: 0.3
+                            },
+                            {
+                                label: 'Cubic Spline Interpolation',
+                                data: splinePoints,
+                                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                tension: 0.3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                position: 'bottom',
+                                title: {
+                                    display: true,
+                                    text: 'x'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'y'
+                                }
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Polynomial Interpolation Comparison'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += parseFloat(context.parsed.y).toFixed(4);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
